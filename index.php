@@ -30,14 +30,14 @@ function parseSquare(string $square): Position
         throw new InvalidArgumentException("Notation invalide : \"{$square}\" (attendu ex: e2)");
     }
     $col = ord($square[0]) - ord('a');
-    $row = 8 - (int) $square[1];
+    $row = (int) $square[1] - 1;
     return new Position($row, $col);
 }
 
 function toSquare(Position $pos): string
 {
     $file = chr(ord('a') + $pos->getColumn());
-    $rank = 8 - $pos->getRow();
+    $rank = $pos->getRow() + 1;
     return $file . $rank;
 }
 

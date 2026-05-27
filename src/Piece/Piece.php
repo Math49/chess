@@ -36,16 +36,25 @@ abstract class Piece implements Renderable
 
     public function render(): string
     {
-        $letter = match ($this->type) {
-            PieceType::KING   => 'K',
-            PieceType::QUEEN  => 'Q',
-            PieceType::ROOK   => 'R',
-            PieceType::BISHOP => 'B',
-            PieceType::KNIGHT => 'N',
-            PieceType::PAWN   => 'P',
-        };
+        if ($this->color === PieceColor::WHITE) {
+            return match ($this->type) {
+                PieceType::KING   => '♔',
+                PieceType::QUEEN  => '♕',
+                PieceType::ROOK   => '♖',
+                PieceType::BISHOP => '♗',
+                PieceType::KNIGHT => '♘',
+                PieceType::PAWN   => '♙',
+            };
+        }
 
-        return $this->color === PieceColor::WHITE ? $letter : strtolower($letter);
+        return match ($this->type) {
+            PieceType::KING   => '♚',
+            PieceType::QUEEN  => '♛',
+            PieceType::ROOK   => '♜',
+            PieceType::BISHOP => '♝',
+            PieceType::KNIGHT => '♞',
+            PieceType::PAWN   => '♟',
+        };
     }
 
     public function canMove(Board $board, Position $target): bool

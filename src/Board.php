@@ -73,20 +73,34 @@ class Board implements Renderable
 
     public function render(): string
     {
-        $files  = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-        $output = '  ' . implode(' ', $files) . "\n";
+        $light = "\033[107m\033[30m";
+        $reset = "\033[0m";
+
+        $output  = "   a  b  c  d  e  f  g  h\n";
+        $output .= "  ┌──┬──┬──┬──┬──┬──┬──┬──┐\n";
 
         for ($row = 0; $row < 8; $row++) {
-            $output .= (8 - $row) . ' ';
+            $rank    = $row + 1;
+            $output .= $rank . ' │';
             for ($col = 0; $col < 8; $col++) {
+                $isLight = ($row + $col) % 2 === 0;
                 $piece   = $this->getPieceAt(new Position($row, $col));
-                $output .= $piece !== null ? $piece->render() : '.';
-                if ($col < 7) {
-                    $output .= ' ';
+                $symbol  = $piece !== null ? $piece->render() : ' ';
+
+                if ($isLight) {
+                    $output .= $light . $symbol . ' ' . $reset . '│';
+                } else {
+                    $output .= $symbol . ' │';
                 }
             }
-            $output .= "\n";
+            $output .= " " . $rank . "\n";
+            if ($row < 7) {
+                $output .= "  ├──┼──┼──┼──┼──┼──┼──┼──┤\n";
+            }
         }
+
+        $output .= "  └──┴──┴──┴──┴──┴──┴──┴──┘\n";
+        $output  .= "   a  b  c  d  e  f  g  h\n";
 
         return $output;
     }
