@@ -5,6 +5,7 @@ declare(strict_types=1);
 class Board implements Renderable
 {
     private array $pieces = [];
+    private ?Position $enPassantTarget = null;
 
     public function placePiece(Piece $piece): void
     {
@@ -56,6 +57,16 @@ class Board implements Renderable
         return true;
     }
 
+    public function getEnPassantTarget(): ?Position
+    {
+        return $this->enPassantTarget;
+    }
+
+    public function setEnPassantTarget(?Position $position): void
+    {
+        $this->enPassantTarget = $position;
+    }
+
     public function getPieces(): array
     {
         return array_values($this->pieces);
@@ -80,7 +91,7 @@ class Board implements Renderable
         $output .= "  ┌──┬──┬──┬──┬──┬──┬──┬──┐\n";
 
         for ($row = 0; $row < 8; $row++) {
-            $rank    = $row + 1;
+            $rank    = 8 - $row;
             $output .= $rank . ' │';
             for ($col = 0; $col < 8; $col++) {
                 $isLight = ($row + $col) % 2 === 0;

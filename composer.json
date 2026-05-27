@@ -1,0 +1,17 @@
+{
+    "name": "mthsm/chess",
+    "autoload": {
+        "psr-4": {
+            "Mthsm\\Chess\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Math49",
+            "email": "mthsmercier@gmail.com"
+        }
+    ],
+    "require-dev": {
+        "phpunit/phpunit": "^13.1"
+    }
+}

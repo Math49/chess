@@ -11,6 +11,7 @@ require_once __DIR__ . '/src/Exception/InvalidMoveException.php';
 require_once __DIR__ . '/src/Exception/NoPieceException.php';
 require_once __DIR__ . '/src/Exception/WrongTurnException.php';
 require_once __DIR__ . '/src/Exception/OccupiedByAllyException.php';
+require_once __DIR__ . '/src/Exception/KingExposedException.php';
 require_once __DIR__ . '/src/Move.php';
 require_once __DIR__ . '/src/Piece/Piece.php';
 require_once __DIR__ . '/src/Piece/King.php';
@@ -30,14 +31,14 @@ function parseSquare(string $square): Position
         throw new InvalidArgumentException("Notation invalide : \"{$square}\" (attendu ex: e2)");
     }
     $col = ord($square[0]) - ord('a');
-    $row = (int) $square[1] - 1;
+    $row = 8 - (int) $square[1];
     return new Position($row, $col);
 }
 
 function toSquare(Position $pos): string
 {
     $file = chr(ord('a') + $pos->getColumn());
-    $rank = $pos->getRow() + 1;
+    $rank = 8 - $pos->getRow();
     return $file . $rank;
 }
 
@@ -57,6 +58,15 @@ while (true) {
     $colorName = $color === PieceColor::WHITE ? 'Blancs' : 'Noirs';
 
     echo $game->getBoard()->render();
+
+    if ($game->isCheckmate($color)) {
+        $winner = $color === PieceColor::WHITE ? 'Noirs' : 'Blancs';
+        echo "\n╔══════════════════════════════╗\n";
+        echo "║       ECHEC ET MAT !         ║\n";
+        echo "║   Les {$winner} ont gagné !   ║\n";
+        echo "╚══════════════════════════════╝\n";
+        break;
+    }
 
     if ($game->isCheck($color)) {
         echo ">>> ECHEC ! Le roi {$colorName} est en échec <<<\n";
@@ -80,7 +90,25 @@ while (true) {
     try {
         $from = parseSquare($parts[0]);
         $to   = parseSquare($parts[1]);
-        $game->play(new Move($from, $to));
+
+        // Détection de promotion avant d'appeler play()
+        $promotion = null;
+        $movingPiece = $game->getBoard()->getPieceAt($from);
+        if ($movingPiece instanceof Pawn) {
+            $lastRow = $movingPiece->getColor() === PieceColor::WHITE ? 0 : 7;
+            if ($to->getRow() === $lastRow) {
+                echo "Promotion ! Choisissez la pièce (q=Dame, r=Tour, b=Fou, n=Cavalier) > ";
+                $choice    = strtolower(trim(fgets(STDIN)));
+                $promotion = match ($choice) {
+                    'r'     => PieceType::ROOK,
+                    'b'     => PieceType::BISHOP,
+                    'n'     => PieceType::KNIGHT,
+                    default => PieceType::QUEEN,
+                };
+            }
+        }
+
+        $game->play(new Move($from, $to), $promotion);
         echo "\nCoup joué : " . toSquare($from) . " -> " . toSquare($to) . "\n\n";
     } catch (NoPieceException $e) {
         echo "Erreur : aucune pièce sur cette case.\n\n";
@@ -88,8 +116,10 @@ while (true) {
         echo "Erreur : ce n'est pas votre tour.\n\n";
     } catch (OccupiedByAllyException $e) {
         echo "Erreur : cette case est occupée par l'une de vos pièces.\n\n";
+    } catch (KingExposedException $e) {
+        echo "Erreur : ce coup expose votre roi.\n\n";
     } catch (InvalidMoveException $e) {
-        echo "Erreur : coup invalide pour cette pièce.\n\n";
+        echo "Erreur : " . $e->getMessage() . "\n\n";
     } catch (InvalidArgumentException $e) {
         echo "Erreur : " . $e->getMessage() . "\n\n";
     }

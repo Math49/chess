@@ -7,6 +7,7 @@ abstract class Piece implements Renderable
     protected PieceColor $color;
     protected Position $position;
     protected PieceType $type;
+    protected bool $hasMoved = false;
 
     public function __construct(PieceColor $color, Position $position)
     {
@@ -27,6 +28,16 @@ abstract class Piece implements Renderable
     public function setPosition(Position $position): void
     {
         $this->position = $position;
+    }
+
+    public function hasMoved(): bool
+    {
+        return $this->hasMoved;
+    }
+
+    public function markMoved(): void
+    {
+        $this->hasMoved = true;
     }
 
     public function getType(): PieceType

@@ -34,7 +34,9 @@ class Pawn extends Piece
         }
 
         if ($colDiff === 1 && $rowDiff === $direction) {
-            return $board->hasPieceAt($target);
+            $enPassant = $board->getEnPassantTarget();
+            return $board->hasPieceAt($target)
+                || ($enPassant !== null && $enPassant->equals($target));
         }
 
         return false;
