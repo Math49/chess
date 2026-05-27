@@ -44,12 +44,10 @@ class Game
             throw new WrongTurnException("Ce n'est pas le tour des {$this->currentPlayer->name}");
         }
 
-        // Étape 5+6 : vérification du déplacement via la pièce
         if (!$piece->canMove($this->board, $to)) {
             throw new InvalidMoveException("Déplacement invalide vers {$to->toKey()}");
         }
 
-        // Étape 7 : vérification de l'occupation par un allié
         $targetPiece = $this->board->getPieceAt($to);
         if ($targetPiece !== null && $targetPiece->getColor() === $piece->getColor()) {
             throw new OccupiedByAllyException("La case {$to->toKey()} est occupée par un allié");
