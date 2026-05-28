@@ -34,13 +34,11 @@ class KingTest extends TestCase
 
     public function testRoquePossible(): void
     {
-        // Roi en e1 (row=7,col=4), tour en h1 (row=7,col=7), chemin libre
         $king = new King(PieceColor::WHITE, new Position(7, 4));
         $rook = new Rook(PieceColor::WHITE, new Position(7, 7));
         $this->board->placePiece($king);
         $this->board->placePiece($rook);
 
-        // Roque côté roi : roi se déplace en g1 (row=7,col=6)
         $this->assertTrue($king->canMove($this->board, new Position(7, 6)));
     }
 
@@ -70,7 +68,7 @@ class KingTest extends TestCase
     {
         $king   = new King(PieceColor::WHITE, new Position(7, 4));
         $rook   = new Rook(PieceColor::WHITE, new Position(7, 7));
-        $bishop = new Bishop(PieceColor::WHITE, new Position(7, 5)); // bloque f1
+        $bishop = new Bishop(PieceColor::WHITE, new Position(7, 5));
         $this->board->placePiece($king);
         $this->board->placePiece($rook);
         $this->board->placePiece($bishop);

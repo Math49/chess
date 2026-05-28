@@ -13,7 +13,7 @@ class PawnTest extends TestCase
         $this->board = new Board();
     }
 
-    public function testAvanceUneCaseBlancVersBas(): void
+    public function testAvanceUneCaseVersLAdversaire(): void
     {
         $pawn = new Pawn(PieceColor::WHITE, new Position(6, 4));
         $this->board->placePiece($pawn);
@@ -67,7 +67,6 @@ class PawnTest extends TestCase
 
     public function testPriseEnPassant(): void
     {
-        // Pion blanc en e5 (row=3,col=4), cible en passant d6 (row=2,col=3)
         $pawn = new Pawn(PieceColor::WHITE, new Position(3, 4));
         $this->board->placePiece($pawn);
         $this->board->setEnPassantTarget(new Position(2, 3));

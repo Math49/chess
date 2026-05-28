@@ -53,16 +53,12 @@ class Game
             throw new OccupiedByAllyException("La case {$to->toKey()} est occupée par un allié");
         }
 
-        // Détection des coups spéciaux
-        $isCastling        = $piece instanceof King
-            && abs($to->getColumn() - $from->getColumn()) === 2;
-        $isEnPassant       = $piece instanceof Pawn
+        $isCastling       = $piece instanceof King && abs($to->getColumn() - $from->getColumn()) === 2;
+        $isEnPassant      = $piece instanceof Pawn
             && abs($to->getColumn() - $from->getColumn()) === 1
             && !$this->board->hasPieceAt($to);
-        $isPawnDoubleStep  = $piece instanceof Pawn
-            && abs($to->getRow() - $from->getRow()) === 2;
+        $isPawnDoubleStep = $piece instanceof Pawn && abs($to->getRow() - $from->getRow()) === 2;
 
-        // Roque : vérifications supplémentaires
         if ($isCastling) {
             if ($this->isCheck($piece->getColor())) {
                 throw new InvalidMoveException("Impossible de roquer en étant en échec");
@@ -74,35 +70,28 @@ class Game
             }
         }
 
-        // Bonus 4 : interdiction d'exposer son propre roi
         if ($this->wouldExposeKing($piece, $to)) {
             throw new KingExposedException("Ce mouvement expose votre roi");
         }
 
-        // ---- Exécution du coup ----
-
         $this->board->movePiece($from, $to);
         $piece->markMoved();
 
-        // Prise en passant : supprimer le pion capturé
         if ($isEnPassant) {
             $this->board->removePieceAt(new Position($from->getRow(), $to->getColumn()));
         }
 
-        // Roque : déplacer aussi la tour
         if ($isCastling) {
             $rookFromCol = $to->getColumn() > $from->getColumn() ? 7 : 0;
             $rookToCol   = $to->getColumn() > $from->getColumn()
                 ? $to->getColumn() - 1
                 : $to->getColumn() + 1;
             $rookFrom    = new Position($from->getRow(), $rookFromCol);
-            $rookTo      = new Position($from->getRow(), $rookToCol);
             $rook        = $this->board->getPieceAt($rookFrom);
-            $this->board->movePiece($rookFrom, $rookTo);
+            $this->board->movePiece($rookFrom, new Position($from->getRow(), $rookToCol));
             $rook->markMoved();
         }
 
-        // Mise à jour de la cible en passant
         if ($isPawnDoubleStep) {
             $midRow = intdiv($from->getRow() + $to->getRow(), 2);
             $this->board->setEnPassantTarget(new Position($midRow, $from->getColumn()));
@@ -110,7 +99,6 @@ class Game
             $this->board->setEnPassantTarget(null);
         }
 
-        // Promotion du pion
         if ($piece instanceof Pawn) {
             $lastRow = $piece->getColor() === PieceColor::WHITE ? 0 : 7;
             if ($to->getRow() === $lastRow) {
@@ -123,6 +111,20 @@ class Game
         }
 
         $this->switchPlayer();
+    }
+
+    public function isMoveLegal(Piece $piece, Position $to): bool
+    {
+        if (!$piece->canMove($this->board, $to)) {
+            return false;
+        }
+
+        $targetPiece = $this->board->getPieceAt($to);
+        if ($targetPiece !== null && $targetPiece->getColor() === $piece->getColor()) {
+            return false;
+        }
+
+        return !$this->wouldExposeKing($piece, $to);
     }
 
     public function isCheck(PieceColor $color): bool
@@ -141,7 +143,6 @@ class Game
         return false;
     }
 
-    // Bonus 5 : échec et mat
     public function isCheckmate(PieceColor $color): bool
     {
         if (!$this->isCheck($color)) {
@@ -167,7 +168,7 @@ class Game
                     }
 
                     if (!$this->wouldExposeKing($piece, $target)) {
-                        return false; // Il existe au moins un coup légal
+                        return false;
                     }
                 }
             }
@@ -176,13 +177,11 @@ class Game
         return true;
     }
 
-    // Simule un déplacement et vérifie si le roi de la même couleur se retrouve en échec
     private function wouldExposeKing(Piece $piece, Position $to): bool
     {
         $from          = $piece->getPosition();
         $capturedPiece = $this->board->getPieceAt($to);
 
-        // En passant : le pion capturé n'est pas sur $to
         $enPassantCaptured = null;
         if ($piece instanceof Pawn
             && abs($to->getColumn() - $from->getColumn()) === 1

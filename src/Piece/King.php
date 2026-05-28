@@ -15,7 +15,6 @@ class King extends Piece
         $rowDiff = abs($target->getRow() - $this->position->getRow());
         $colDiff = abs($target->getColumn() - $this->position->getColumn());
 
-        // Roque : le roi se déplace de 2 cases horizontalement
         if ($rowDiff === 0 && $colDiff === 2 && !$this->hasMoved) {
             return $this->canCastle($board, $target);
         }

@@ -24,22 +24,100 @@ require_once __DIR__ . '/src/Board.php';
 require_once __DIR__ . '/src/Factory/PieceFactory.php';
 require_once __DIR__ . '/src/Game.php';
 
-function parseSquare(string $square): Position
+function parseSan(string $san, Game $game): array
 {
-    $square = strtolower(trim($square));
-    if (!preg_match('/^[a-h][1-8]$/', $square)) {
-        throw new InvalidArgumentException("Notation invalide : \"{$square}\" (attendu ex: e2)");
-    }
-    $col = ord($square[0]) - ord('a');
-    $row = 8 - (int) $square[1];
-    return new Position($row, $col);
-}
+    $san   = trim($san);
+    $san   = rtrim($san, '+# ');
+    $color = $game->getCurrentPlayer();
+    $board = $game->getBoard();
 
-function toSquare(Position $pos): string
-{
-    $file = chr(ord('a') + $pos->getColumn());
-    $rank = 8 - $pos->getRow();
-    return $file . $rank;
+    if ($san === 'O-O-O' || $san === '0-0-0') {
+        $kingPos = $board->getKingPosition($color);
+        if ($kingPos === null) {
+            throw new InvalidArgumentException("Roi introuvable sur le plateau");
+        }
+        return [new Move($kingPos, new Position($kingPos->getRow(), $kingPos->getColumn() - 2)), null];
+    }
+
+    if ($san === 'O-O' || $san === '0-0') {
+        $kingPos = $board->getKingPosition($color);
+        if ($kingPos === null) {
+            throw new InvalidArgumentException("Roi introuvable sur le plateau");
+        }
+        return [new Move($kingPos, new Position($kingPos->getRow(), $kingPos->getColumn() + 2)), null];
+    }
+
+    $promotion = null;
+    if (preg_match('/=([QRBNqrbn])$/', $san, $m)) {
+        $promotion = match (strtoupper($m[1])) {
+            'Q' => PieceType::QUEEN,
+            'R' => PieceType::ROOK,
+            'B' => PieceType::BISHOP,
+            'N' => PieceType::KNIGHT,
+        };
+        $san = preg_replace('/=[QRBNqrbn]$/', '', $san);
+    }
+
+    $pieceType = PieceType::PAWN;
+    if (preg_match('/^([KQRBN])/', $san, $m)) {
+        $pieceType = match ($m[1]) {
+            'K' => PieceType::KING,
+            'Q' => PieceType::QUEEN,
+            'R' => PieceType::ROOK,
+            'B' => PieceType::BISHOP,
+            'N' => PieceType::KNIGHT,
+        };
+        $san = substr($san, 1);
+    }
+
+    $san = str_replace('x', '', $san);
+
+    if (strlen($san) < 2) {
+        throw new InvalidArgumentException("Notation invalide");
+    }
+
+    $destFile = $san[strlen($san) - 2];
+    $destRank = (int) $san[strlen($san) - 1];
+    $disambig = substr($san, 0, strlen($san) - 2);
+
+    if (!preg_match('/^[a-h]$/', $destFile) || $destRank < 1 || $destRank > 8) {
+        throw new InvalidArgumentException("Case invalide dans la notation");
+    }
+
+    $destCol = ord($destFile) - ord('a');
+    $destRow = 8 - $destRank;
+    $to      = new Position($destRow, $destCol);
+
+    $candidates = [];
+    foreach ($board->getPieces() as $piece) {
+        if ($piece->getColor() !== $color)     continue;
+        if ($piece->getType()  !== $pieceType) continue;
+        if (!$game->isMoveLegal($piece, $to))  continue;
+
+        if ($disambig !== '') {
+            if (strlen($disambig) === 1 && ctype_alpha($disambig)) {
+                if ($piece->getPosition()->getColumn() !== ord($disambig) - ord('a')) continue;
+            } elseif (strlen($disambig) === 1 && ctype_digit($disambig)) {
+                if ($piece->getPosition()->getRow() !== 8 - (int) $disambig) continue;
+            } elseif (strlen($disambig) === 2) {
+                $dCol = ord($disambig[0]) - ord('a');
+                $dRow = 8 - (int) $disambig[1];
+                if ($piece->getPosition()->getColumn() !== $dCol) continue;
+                if ($piece->getPosition()->getRow()    !== $dRow) continue;
+            }
+        }
+
+        $candidates[] = $piece;
+    }
+
+    if (count($candidates) === 0) {
+        throw new InvalidArgumentException("Aucune pièce ne peut jouer « {$san} »");
+    }
+    if (count($candidates) > 1) {
+        throw new InvalidArgumentException("Coup ambigu, précisez la pièce (ex: Nbd2, R1e3)");
+    }
+
+    return [new Move($candidates[0]->getPosition(), $to), $promotion];
 }
 
 $game = new Game();
@@ -49,9 +127,8 @@ echo "\n";
 echo "╔══════════════════════════════╗\n";
 echo "║        ECHECS EN PHP         ║\n";
 echo "╚══════════════════════════════╝\n";
-echo "Commandes : saisir le coup en notation algébrique (ex: e2 e4)\n";
-echo "           Blancs en Majuscules; Noirs en minuscules\n";
-echo "           'quit' pour quitter\n\n";
+echo "Notation algébrique : e4  Nf3  O-O  O-O-O  exd5  e8=Q\n";
+echo "'quit' pour quitter\n\n";
 
 while (true) {
     $color     = $game->getCurrentPlayer();
@@ -76,47 +153,27 @@ while (true) {
     $input = fgets(STDIN);
 
     if ($input === false || strtolower(trim($input)) === 'quit') {
-        echo "Partie terminée. A bientôt !\n";
+        echo "Partie terminée. À bientôt !\n";
         break;
     }
 
-    $parts = preg_split('/\s+/', trim($input));
+    $san = trim($input);
 
-    if (count($parts) !== 2) {
-        echo "Format invalide. Exemple : e2 e4\n\n";
+    if ($san === '') {
         continue;
     }
 
     try {
-        $from = parseSquare($parts[0]);
-        $to   = parseSquare($parts[1]);
-
-        // Détection de promotion avant d'appeler play()
-        $promotion = null;
-        $movingPiece = $game->getBoard()->getPieceAt($from);
-        if ($movingPiece instanceof Pawn) {
-            $lastRow = $movingPiece->getColor() === PieceColor::WHITE ? 0 : 7;
-            if ($to->getRow() === $lastRow) {
-                echo "Promotion ! Choisissez la pièce (q=Dame, r=Tour, b=Fou, n=Cavalier) > ";
-                $choice    = strtolower(trim(fgets(STDIN)));
-                $promotion = match ($choice) {
-                    'r'     => PieceType::ROOK,
-                    'b'     => PieceType::BISHOP,
-                    'n'     => PieceType::KNIGHT,
-                    default => PieceType::QUEEN,
-                };
-            }
-        }
-
-        $game->play(new Move($from, $to), $promotion);
-        echo "\nCoup joué : " . toSquare($from) . " -> " . toSquare($to) . "\n\n";
-    } catch (NoPieceException $e) {
+        [$move, $promotion] = parseSan($san, $game);
+        $game->play($move, $promotion);
+        echo "\nCoup joué : {$san}\n\n";
+    } catch (NoPieceException) {
         echo "Erreur : aucune pièce sur cette case.\n\n";
-    } catch (WrongTurnException $e) {
+    } catch (WrongTurnException) {
         echo "Erreur : ce n'est pas votre tour.\n\n";
-    } catch (OccupiedByAllyException $e) {
+    } catch (OccupiedByAllyException) {
         echo "Erreur : cette case est occupée par l'une de vos pièces.\n\n";
-    } catch (KingExposedException $e) {
+    } catch (KingExposedException) {
         echo "Erreur : ce coup expose votre roi.\n\n";
     } catch (InvalidMoveException $e) {
         echo "Erreur : " . $e->getMessage() . "\n\n";

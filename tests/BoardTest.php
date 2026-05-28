@@ -52,20 +52,16 @@ class BoardTest extends TestCase
 
     public function testIsPathClearHorizontal(): void
     {
-        // Chemin libre
         $this->assertTrue($this->board->isPathClear(new Position(7, 0), new Position(7, 7)));
 
-        // Chemin bloqué
         $this->board->placePiece(new Pawn(PieceColor::WHITE, new Position(7, 4)));
         $this->assertFalse($this->board->isPathClear(new Position(7, 0), new Position(7, 7)));
     }
 
     public function testIsPathClearDiagonale(): void
     {
-        // Diagonale libre
         $this->assertTrue($this->board->isPathClear(new Position(4, 0), new Position(0, 4)));
 
-        // Diagonale bloquée
         $this->board->placePiece(new Pawn(PieceColor::BLACK, new Position(2, 2)));
         $this->assertFalse($this->board->isPathClear(new Position(4, 0), new Position(0, 4)));
     }
